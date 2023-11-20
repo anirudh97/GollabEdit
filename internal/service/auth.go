@@ -63,6 +63,7 @@ func CreateUser(r *CreateUserRequest) (*CreateUserResponse, error) {
 	return cu, nil
 }
 
+// verify password
 func verifyPassword(ip string, ep string) bool {
 	err := bcrypt.CompareHashAndPassword([]byte(ep), []byte(ip))
 	return err == nil

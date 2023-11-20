@@ -7,5 +7,6 @@ import (
 func SetupRoutes(g *gin.Engine) {
 	// Auth routes
 	authRoutes(g)
-
+	//File routes
+	fileRoutes(g)
 }

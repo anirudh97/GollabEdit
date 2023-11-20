@@ -7,6 +7,8 @@ import (
 	"github.com/anirudh97/GollabEdit/internal/config"
 	"github.com/anirudh97/GollabEdit/internal/database"
 	"github.com/gin-gonic/gin"
+
+	"github.com/anirudh97/GollabEdit/internal/awsutils"
 )
 
 func main() {
@@ -18,6 +20,12 @@ func main() {
 	if err := database.InitDB(&conf.Database); err != nil {
 		log.Fatalf("Failed to initialize database: %v", err)
 	}
+
+	_, awsInstErr := awsutils.GetInstance()
+	if awsInstErr != nil {
+		log.Fatalf("Failed to initialize aws client: %v", awsInstErr)
+	}
+
 	r := gin.Default()
 	api.SetupRoutes(r)
 

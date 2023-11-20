@@ -2,6 +2,7 @@ package handler
 
 import (
 	"log"
+	"strings"
 
 	"net/http"
 
@@ -9,6 +10,27 @@ import (
 	utils "github.com/anirudh97/GollabEdit/pkg"
 	"github.com/gin-gonic/gin"
 )
+
+func AuthMiddleware() gin.HandlerFunc {
+	return func(c *gin.Context) {
+		authHeader := c.GetHeader("Authorization")
+		tokenString := strings.TrimPrefix(authHeader, "Bearer ")
+
+		token, err := utils.ValidateToken(tokenString)
+		if err != nil {
+			c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": service.ErrInvalidToken.Error()})
+			return
+		}
+
+		// Token is valid, set the user information from token into the context
+		if claims, ok := token.Claims.(*utils.Claims); ok && token.Valid {
+			c.Set("email", claims.Email)
+			c.Next()
+		} else {
+			c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": service.ErrInvalidToken.Error()})
+		}
+	}
+}
 
 // Parses the request data and calls the CreateUser Service.
 func CreateUser(c *gin.Context) {

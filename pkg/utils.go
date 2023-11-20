@@ -4,10 +4,15 @@ import (
 	"regexp"
 	"time"
 
+	"errors"
+
 	jwt "github.com/dgrijalva/jwt-go"
 )
 
-var jwtKey = []byte("GollabEdit")
+var (
+	jwtKey          = []byte("GollabEdit")
+	ErrInvalidToken = errors.New("invalid token. login again")
+)
 
 type Claims struct {
 	Email string `json:"email"`
@@ -44,4 +49,22 @@ func GenerateJWTToken(email string) (string, error) {
 	}
 
 	return tokenString, nil
+}
+
+func ValidateToken(tokenString string) (*jwt.Token, error) {
+	claims := &Claims{}
+
+	token, err := jwt.ParseWithClaims(tokenString, claims, func(token *jwt.Token) (interface{}, error) {
+		return jwtKey, nil
+	})
+
+	if err != nil {
+		return nil, err
+	}
+
+	if !token.Valid {
+		return nil, ErrInvalidToken
+	}
+
+	return token, nil
 }
