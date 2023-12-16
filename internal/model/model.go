@@ -11,3 +11,14 @@ type LoggedInUser struct {
 	Email    string
 	Token    string
 }
+
+type File struct {
+	Id         string `db:"id"`
+	Filename   string `db:"filename"`
+	Location   string `db:"location"`
+	Owner      string `db:"owner"`
+	IsUploaded bool   `db:"isUploaded"`
+	FileSize   int64  `db:"fileSize"`
+	CreatedAt  string `db:"createdAt"`
+	UpdatedAt  string `db:"updatedAt"`
+}

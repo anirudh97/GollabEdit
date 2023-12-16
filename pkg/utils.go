@@ -2,6 +2,7 @@ package utils
 
 import (
 	"regexp"
+	"strings"
 	"time"
 
 	"errors"
@@ -17,6 +18,19 @@ var (
 type Claims struct {
 	Email string `json:"email"`
 	jwt.StandardClaims
+}
+
+func ValidateFilename(filename string) bool {
+	split := strings.Split(filename, ".")
+
+	if len(split) != 2 {
+		return false
+	} else if split[1] != "txt" && split[1] != "text" {
+		return false
+	}
+
+	return true
+
 }
 
 func ValidateEmail(email string) bool {
