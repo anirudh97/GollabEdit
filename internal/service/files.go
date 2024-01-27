@@ -2,8 +2,12 @@ package service
 
 import (
 	"fmt"
+	"os"
+	"path"
 	"time"
 
+	"github.com/anirudh97/GollabEdit/internal/awsutils"
+	"github.com/anirudh97/GollabEdit/internal/config"
 	"github.com/anirudh97/GollabEdit/internal/model"
 	"github.com/anirudh97/GollabEdit/internal/repository"
 )
@@ -17,6 +21,72 @@ type CreateFileResponse struct {
 	Filename  string `json:"filename"`
 	Location  string `json:"location"`
 	CreatedAt string
+}
+type OpenFileRequest struct {
+	Filename string `json:"filename"`
+	Location string `json:"location"`
+	Owner    string `json:"owner"`
+}
+
+func OpenFile(r *OpenFileRequest) (*CreateFileResponse, error) {
+	status, err := repository.CheckForFileExistence(r.Filename, r.Location, r.Owner)
+	if err != nil {
+		return nil, err
+	}
+	if !status {
+		return nil, ErrFileDoesNotExist
+	}
+
+	s3Status, err := repository.CheckIfUploaded(r.Filename, r.Location, r.Owner)
+	if err != nil {
+		return nil, err
+	}
+
+	s3Client, s3Err := awsutils.NewS3Client()
+	if s3Err != nil {
+		return nil, s3Err
+	}
+
+	conf, confErr := config.Load()
+	if confErr != nil {
+		return nil, confErr
+	}
+
+	bucket := conf.AWS.FilesBucket
+	cleanPath := path.Clean("/" + r.Owner + "/" + r.Location + "/" + r.Filename)
+
+	// Upload file to S3
+	if !s3Status {
+		content := []byte("// Empty file.")
+		err := s3Client.Upload(bucket, cleanPath, content)
+		if err != nil {
+			return nil, err
+		}
+
+		// Update uploaded status in DB
+		statusErr := repository.UpdateUploadedStatus(r.Filename, r.Location, r.Owner)
+		if statusErr != nil {
+			return nil, err
+		}
+	}
+
+	// download file from s3
+	sysPath := conf.Server.TmpPath
+
+	fileContent, s3DownloadErr := s3Client.Download(bucket, cleanPath)
+	if s3DownloadErr != nil {
+		return nil, s3DownloadErr
+	}
+
+	tempFileName := r.Owner + "_" + r.Filename
+	writeErr := os.WriteFile(path.Clean(sysPath+tempFileName), fileContent, 0644)
+	if err != nil {
+		fmt.Println("Error writing to file:", err)
+		return nil, writeErr
+	}
+
+	return nil, nil
+
 }
 
 func CreateFile(r *CreateFileRequest) (*CreateFileResponse, error) {

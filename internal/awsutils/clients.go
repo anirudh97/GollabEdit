@@ -1,6 +1,8 @@
 package awsutils
 
 import (
+	"bytes"
+	"io"
 	"sync"
 
 	"context"
@@ -20,6 +22,10 @@ type AWSInstance struct {
 	awsConfig aws.Config
 }
 
+type S3Client struct {
+	client *s3.Client
+}
+
 // Initializes the AWS instance only once (Singleton)
 func GetInstance() (*AWSInstance, error) {
 	once.Do(func() {
@@ -31,7 +37,39 @@ func GetInstance() (*AWSInstance, error) {
 }
 
 // Create S3 Client
+func NewS3Client() (*S3Client, error) {
+	awsInst, err := GetInstance()
+	if err != nil {
+		return nil, err
+	}
+	return &S3Client{client: s3.NewFromConfig(awsInst.awsConfig)}, nil
+}
 
-func (inst *AWSInstance) NewS3Client() *s3.Client {
-	return s3.NewFromConfig(inst.awsConfig)
+func (inst *S3Client) Upload(bucket string, objectKey string, fileContent []byte) error {
+	input := &s3.PutObjectInput{
+		Bucket: &bucket,
+		Key:    &objectKey,
+		Body:   bytes.NewReader(fileContent),
+	}
+
+	_, err := inst.client.PutObject(context.TODO(), input)
+
+	return err
+}
+
+func (client *S3Client) Download(bucket string, objectKey string) ([]byte, error) {
+	input := &s3.GetObjectInput{
+		Bucket: &bucket,
+		Key:    &objectKey,
+	}
+
+	result, err := client.client.GetObject(context.TODO(), input)
+	if err != nil {
+		return nil, err
+	}
+	defer result.Body.Close()
+
+	fileContent, err := io.ReadAll(result.Body)
+
+	return fileContent, err
 }

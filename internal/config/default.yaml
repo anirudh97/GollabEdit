@@ -1,5 +1,6 @@
 server:
   port: ":8080"
+  tmpPath: "/Users/anirudhjakati/Desktop/GollabEdit/tmp/"
 
 database:
   username: "gollabedit"
@@ -7,3 +8,7 @@ database:
   host: "localhost"
   port: "3306"
   dbname: "gollabedit"
+
+aws:
+  filesBucket: "gollabedit"
+

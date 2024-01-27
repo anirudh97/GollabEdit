@@ -38,3 +38,26 @@ func CreateFile(c *gin.Context) {
 
 	c.JSON(http.StatusCreated, resp)
 }
+
+func OpenFile(c *gin.Context) {
+	log.Println("Handler | OpenFile :: Invoked")
+	var req service.OpenFileRequest
+	if err := c.ShouldBind(&req); err != nil {
+		log.Println("Error in Binding JSON")
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	resp, err := service.OpenFile(&req)
+	if err != nil {
+		if err == service.ErrFileDoesNotExist {
+			c.JSON(http.StatusConflict, gin.H{"error": service.ErrFileDoesNotExist.Error()})
+		} else {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		}
+		return
+	}
+
+	c.JSON(http.StatusCreated, resp)
+
+}

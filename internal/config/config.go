@@ -9,10 +9,12 @@ import (
 type Conifiguration struct {
 	Server   ServerConfig
 	Database DatabaseConfig
+	AWS      AWSConfig
 }
 
 type ServerConfig struct {
-	Port string
+	Port    string
+	TmpPath string
 }
 
 type DatabaseConfig struct {
@@ -21,6 +23,10 @@ type DatabaseConfig struct {
 	DBName   string `mapstructure:"dbname"`
 	Host     string
 	Port     string
+}
+
+type AWSConfig struct {
+	FilesBucket string `yaml:"filesBucket"`
 }
 
 func Load() (*Conifiguration, error) {

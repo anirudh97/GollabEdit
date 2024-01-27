@@ -1,11 +1,11 @@
 package utils
 
 import (
+	"errors"
+	"fmt"
 	"regexp"
 	"strings"
 	"time"
-
-	"errors"
 
 	jwt "github.com/dgrijalva/jwt-go"
 )
@@ -46,7 +46,13 @@ func ValidatePassword(password string) bool {
 }
 
 func GenerateJWTToken(email string) (string, error) {
-	expirationTime := time.Now().Add(24 * time.Hour)
+	loc, err := time.LoadLocation("UTC")
+	if err != nil {
+		fmt.Println("Error loading location:", err)
+		return "", err
+	}
+
+	expirationTime := time.Now().In(loc).Add(24 * time.Hour)
 
 	claims := &Claims{
 		Email: email,
