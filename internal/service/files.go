@@ -27,6 +27,91 @@ type OpenFileRequest struct {
 	Location string `json:"location"`
 	Owner    string `json:"owner"`
 }
+type ShareFileRequest struct {
+	Filename        string `json:"filename"`
+	Location        string `json:"location"`
+	SharedByEmail   string `json:"sharedByEmail"`
+	SharedWithEmail string `json:"sharedWithEmail"`
+	Permission      string `json:"permission"`
+}
+type ShareFileResponse struct {
+	Filename        string
+	Location        string
+	Permission      string
+	SharedWithEmail string
+}
+
+func ShareFile(r *ShareFileRequest) (*ShareFileResponse, error) {
+	status, err := repository.CheckForFileExistence(r.Filename, r.Location, r.SharedByEmail)
+	if err != nil {
+		return nil, err
+	}
+	if !status {
+		return nil, ErrFileDoesNotExist
+	}
+
+	sharedByEmailStatus, sharedByEmailErr := repository.CheckForUserExistence(r.SharedByEmail)
+	if sharedByEmailErr != nil {
+		return nil, sharedByEmailErr
+	}
+	if !sharedByEmailStatus {
+		return nil, ErrUserDoesNotExist
+	}
+
+	sharedWithEmailStatus, sharedWithEmailErr := repository.CheckForUserExistence(r.SharedWithEmail)
+	if sharedWithEmailErr != nil {
+		return nil, sharedWithEmailErr
+	}
+	if !sharedWithEmailStatus {
+		return nil, ErrUserDoesNotExist
+	}
+
+	loc, err := time.LoadLocation("UTC")
+	if err != nil {
+		fmt.Println("Error loading location:", err)
+		return nil, err
+	}
+
+	fileId, fileIdErr := repository.GetFileId(r.Filename, r.Location, r.SharedByEmail)
+	if fileIdErr != nil {
+		return nil, fileIdErr
+	}
+
+	shareStatus, shareStatusErr := repository.CheckShared(r.SharedByEmail, r.SharedWithEmail, fileId)
+	if shareStatusErr != nil {
+		return nil, shareStatusErr
+	}
+	if shareStatus {
+		return nil, ErrAlreadyShared
+	}
+
+	currentTime := time.Now().In(loc)
+
+	sharedFile := &model.SharedFile{
+		Filename:        r.Filename,
+		Location:        r.Location,
+		Permission:      r.Permission,
+		SharedWithEmail: r.SharedWithEmail,
+		SharedByEmail:   r.SharedByEmail,
+		SharedAt:        currentTime.Format("2006-01-02 15:04:05"),
+		FileId:          fileId,
+	}
+
+	shareFileErr := repository.ShareFile(sharedFile)
+	if shareFileErr != nil {
+		return nil, shareFileErr
+	}
+
+	sfr := &ShareFileResponse{
+		Filename:        sharedFile.Filename,
+		Location:        sharedFile.Location,
+		Permission:      sharedFile.Permission,
+		SharedWithEmail: sharedFile.SharedWithEmail,
+	}
+
+	return sfr, nil
+
+}
 
 func OpenFile(r *OpenFileRequest) (*CreateFileResponse, error) {
 	status, err := repository.CheckForFileExistence(r.Filename, r.Location, r.Owner)

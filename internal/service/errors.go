@@ -11,4 +11,5 @@ var (
 	ErrFileFormatIncorrect = errors.New("invalid file format or no format mentioned. only txt and text format allowed")
 	ErrFileAlreadyExists   = errors.New("file already exists")
 	ErrFileDoesNotExist    = errors.New("file does not exist. please create one")
+	ErrAlreadyShared       = errors.New("file already shared")
 )

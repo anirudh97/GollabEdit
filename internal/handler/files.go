@@ -61,3 +61,37 @@ func OpenFile(c *gin.Context) {
 	c.JSON(http.StatusCreated, resp)
 
 }
+
+func ShareFile(c *gin.Context) {
+	log.Println("Handler | ShareFile :: Invoked")
+
+	var req service.ShareFileRequest
+	if err := c.ShouldBind(&req); err != nil {
+		log.Println("Error in Binding JSON")
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	// Email validation
+	if !utils.ValidateEmail(req.SharedByEmail) {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "email is not in the right format"})
+		return
+	}
+
+	if !utils.ValidateEmail(req.SharedWithEmail) {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "email is not in the right format"})
+		return
+	}
+
+	resp, err := service.ShareFile(&req)
+	if err != nil {
+		if err == service.ErrUserDoesNotExist {
+			c.JSON(http.StatusConflict, gin.H{"error": service.ErrUserDoesNotExist.Error()})
+		} else {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		}
+		return
+	}
+
+	c.JSON(http.StatusCreated, resp)
+}

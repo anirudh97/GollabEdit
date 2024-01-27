@@ -22,3 +22,14 @@ type File struct {
 	CreatedAt  string `db:"createdAt"`
 	UpdatedAt  string `db:"updatedAt"`
 }
+
+type SharedFile struct {
+	ShareId         string
+	Filename        string
+	Location        string
+	Permission      string
+	SharedWithEmail string
+	SharedByEmail   string
+	SharedAt        string
+	FileId          string
+}

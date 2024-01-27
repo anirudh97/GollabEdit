@@ -23,6 +23,33 @@ func CreateFile(f *model.File) error {
 	return err
 }
 
+func GetFileId(f string, l string, o string) (string, error) {
+	query := "SELECT id FROM files WHERE owner = ? AND filename = ? AND location = ?"
+
+	var fileId string
+
+	err := database.DB.Get(&fileId, query, o, f, l)
+
+	return fileId, err
+}
+
+func ShareFile(f *model.SharedFile) error {
+	query := "INSERT INTO sharedFiles (fileId, sharedWithUserEmail, sharedByUserEmail, permission, sharedAt) VALUES (?, ?, ?, ?, ?)"
+
+	_, err := database.DB.Exec(query, f.FileId, f.SharedWithEmail, f.SharedByEmail, f.Permission, f.SharedAt)
+
+	return err
+}
+
+func CheckShared(sharedByEmail string, sharedWithEmail string, fileId string) (bool, error) {
+	query := "SELECT EXISTS(SELECT 1 FROM sharedFiles WHERE sharedByUserEmail = ? AND sharedWithUserEmail = ? AND fileId = ?)"
+
+	var exists bool
+
+	err := database.DB.Get(&exists, query, sharedByEmail, sharedWithEmail, fileId)
+
+	return exists, err
+}
 func CheckIfUploaded(f string, l string, o string) (bool, error) {
 	query := "SELECT EXISTS(SELECT 1 FROM files WHERE owner = ? AND filename = ? AND location = ? AND isUploaded = 1)"
 
