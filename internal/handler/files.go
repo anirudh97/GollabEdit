@@ -1,6 +1,7 @@
 package handler
 
 import (
+	"encoding/json"
 	"log"
 
 	"net/http"
@@ -15,27 +16,61 @@ func CreateFile(c *gin.Context) {
 
 	var req service.CreateFileRequest
 	if err := c.ShouldBind(&req); err != nil {
-		log.Println("Error in Binding JSON")
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		log.Println("Handler | CreateFile | Error :: Error: ", err.Error())
+		resp := &utils.Response{
+			Data:  nil,
+			Error: err.Error(),
+		}
+		c.JSON(http.StatusInternalServerError, resp)
 		return
 	}
 
 	// Filename validation
 	if !utils.ValidateFilename(req.Filename) {
-		c.JSON(http.StatusBadRequest, gin.H{"error": service.ErrFileFormatIncorrect.Error()})
+		log.Println("Handler | CreateFile | Info :: Filename validation failed ")
+		resp := &utils.Response{
+			Data:  nil,
+			Error: service.ErrFileFormatIncorrect.Error(),
+		}
+		c.JSON(http.StatusBadRequest, resp)
 		return
 	}
 
-	resp, err := service.CreateFile(&req)
+	respCreateFile, err := service.CreateFile(&req)
 	if err != nil {
 		if err == service.ErrFileAlreadyExists {
-			c.JSON(http.StatusConflict, gin.H{"error": service.ErrFileAlreadyExists.Error()})
+			log.Println("Handler | CreateFile | Info :: File already exists ")
+			resp := &utils.Response{
+				Data:  nil,
+				Error: service.ErrFileAlreadyExists.Error(),
+			}
+			c.JSON(http.StatusConflict, resp)
 		} else {
-			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+			log.Println("Handler | CreateFile | Error :: Error: ", err.Error())
+			resp := &utils.Response{
+				Data:  nil,
+				Error: err.Error(),
+			}
+			c.JSON(http.StatusInternalServerError, resp)
 		}
 		return
 	}
 
+	jsonData, err := json.Marshal(respCreateFile)
+	if err != nil {
+		log.Println("Handler | CreateFile | Error :: Error: ", err.Error())
+		resp := &utils.Response{
+			Data:  nil,
+			Error: err.Error(),
+		}
+		c.JSON(http.StatusInternalServerError, resp)
+		return
+	}
+
+	resp := &utils.Response{
+		Data:  jsonData,
+		Error: "",
+	}
 	c.JSON(http.StatusCreated, resp)
 }
 
@@ -43,22 +78,51 @@ func OpenFile(c *gin.Context) {
 	log.Println("Handler | OpenFile :: Invoked")
 	var req service.OpenFileRequest
 	if err := c.ShouldBind(&req); err != nil {
-		log.Println("Error in Binding JSON")
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		log.Println("Handler | OpenFile | Error :: Error: ", err.Error())
+		resp := &utils.Response{
+			Data:  nil,
+			Error: err.Error(),
+		}
+		c.JSON(http.StatusInternalServerError, resp)
 		return
 	}
 
-	resp, err := service.OpenFile(&req)
+	respOpen, err := service.OpenFile(&req)
 	if err != nil {
 		if err == service.ErrFileDoesNotExist {
-			c.JSON(http.StatusConflict, gin.H{"error": service.ErrFileDoesNotExist.Error()})
+			log.Println("Handler | OpenFile | Info :: File Does not exist ")
+			resp := &utils.Response{
+				Data:  nil,
+				Error: service.ErrFileDoesNotExist.Error(),
+			}
+			c.JSON(http.StatusConflict, resp)
+
 		} else {
-			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+			log.Println("Handler | OpenFile | Error :: Error: ", err.Error())
+			resp := &utils.Response{
+				Data:  nil,
+				Error: err.Error(),
+			}
+			c.JSON(http.StatusInternalServerError, resp)
 		}
 		return
 	}
+	jsonData, err := json.Marshal(respOpen)
+	if err != nil {
+		log.Println("Handler | OpenFile | Error :: Error: ", err.Error())
+		resp := &utils.Response{
+			Data:  nil,
+			Error: err.Error(),
+		}
+		c.JSON(http.StatusInternalServerError, resp)
+		return
+	}
 
-	c.JSON(http.StatusCreated, resp)
+	resp := &utils.Response{
+		Data:  jsonData,
+		Error: "",
+	}
+	c.JSON(http.StatusOK, resp)
 
 }
 
@@ -67,31 +131,78 @@ func ShareFile(c *gin.Context) {
 
 	var req service.ShareFileRequest
 	if err := c.ShouldBind(&req); err != nil {
-		log.Println("Error in Binding JSON")
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		log.Println("Handler | ShareFile | Error :: Error: ", err.Error())
+		resp := &utils.Response{
+			Data:  nil,
+			Error: err.Error(),
+		}
+		c.JSON(http.StatusInternalServerError, resp)
 		return
 	}
 
 	// Email validation
 	if !utils.ValidateEmail(req.SharedByEmail) {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "email is not in the right format"})
+		log.Println("Handler | ShareFile | Info :: Email Validation Failed")
+		resp := &utils.Response{
+			Data:  nil,
+			Error: "Email not in the correct format.",
+		}
+		c.JSON(http.StatusBadRequest, resp)
 		return
 	}
 
 	if !utils.ValidateEmail(req.SharedWithEmail) {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "email is not in the right format"})
+		log.Println("Handler | ShareFile | Info :: Email Validation Failed")
+		resp := &utils.Response{
+			Data:  nil,
+			Error: "Email not in the correct format.",
+		}
+		c.JSON(http.StatusBadRequest, resp)
 		return
 	}
 
-	resp, err := service.ShareFile(&req)
+	respShare, err := service.ShareFile(&req)
 	if err != nil {
 		if err == service.ErrUserDoesNotExist {
-			c.JSON(http.StatusConflict, gin.H{"error": service.ErrUserDoesNotExist.Error()})
+			log.Println("Handler | ShareFile | Info :: Invalid User")
+			resp := &utils.Response{
+				Data:  nil,
+				Error: service.ErrUserDoesNotExist.Error(),
+			}
+			c.JSON(http.StatusBadRequest, resp)
+		} else if err == service.ErrAlreadyShared {
+			log.Println("Handler | ShareFile | Info :: Already Shared")
+			resp := &utils.Response{
+				Data:  nil,
+				Error: service.ErrAlreadyShared.Error(),
+			}
+			c.JSON(http.StatusConflict, resp)
 		} else {
-			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+			log.Println("Handler | ShareFile | Error :: Error: ", err.Error())
+			resp := &utils.Response{
+				Data:  nil,
+				Error: err.Error(),
+			}
+			c.JSON(http.StatusInternalServerError, resp)
+
 		}
 		return
 	}
 
+	jsonData, err := json.Marshal(respShare)
+	if err != nil {
+		log.Println("Handler | ShareFile | Error :: Error: ", err.Error())
+		resp := &utils.Response{
+			Data:  nil,
+			Error: err.Error(),
+		}
+		c.JSON(http.StatusInternalServerError, resp)
+		return
+	}
+
+	resp := &utils.Response{
+		Data:  jsonData,
+		Error: "",
+	}
 	c.JSON(http.StatusCreated, resp)
 }

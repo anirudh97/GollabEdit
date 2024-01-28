@@ -51,8 +51,12 @@ func CreateUser(c *gin.Context) {
 	var req service.CreateUserRequest
 
 	if err := c.ShouldBind(&req); err != nil {
-		log.Println("Handler | CreateUser | Error :: Error in Binding JSON")
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		log.Println("Handler | CreateUser | Error :: Error: ", err.Error())
+		resp := &utils.Response{
+			Data:  nil,
+			Error: err.Error(),
+		}
+		c.JSON(http.StatusInternalServerError, resp)
 		return
 	}
 

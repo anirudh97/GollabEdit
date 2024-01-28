@@ -111,7 +111,7 @@ func createAccountCommand() *cobra.Command {
 }
 
 // Creates the login command
-func createLoginCommand() (*cobra.Command, userCredentials) {
+func createLoginCommand() *cobra.Command {
 	var user userCredentials
 
 	loginCmd := &cobra.Command{
@@ -175,23 +175,34 @@ func createLoginCommand() (*cobra.Command, userCredentials) {
 				return
 			}
 
+			jsonData, err := json.Marshal(responseData)
+			if err != nil {
+				fmt.Println("Error marshaling response data:", err)
+				return
+			}
+
+			// Define a file name
+			fileName := "config.json"
+
+			// Write JSON data to the file
+			err = os.WriteFile(fileName, jsonData, 0644)
+			if err != nil {
+				fmt.Println("Error writing JSON to file:", err)
+				return
+			}
 			fmt.Println("-------------------------------------------------------")
 			fmt.Printf("Logged In Successfully!\n")
 			fmt.Printf("Username: %s\n", responseData.Username)
 			fmt.Printf("Email: %s\n", responseData.Email)
-			fmt.Println("Token: ", responseData.Token)
 			fmt.Println("-------------------------------------------------------")
 
-			os.Setenv("GOLLABEDIT_USERNAME", responseData.Username)
-			os.Setenv("GOLLABEDIT_TOKEN", responseData.Token)
-			os.Setenv("GOLLABEDIT_EMAIL", responseData.Email)
 		},
 	}
 
 	loginCmd.Flags().StringVar(&user.email, "email", "", "Email")
 	loginCmd.Flags().StringVar(&user.password, "pwd", "", "Password")
 
-	return loginCmd, user
+	return loginCmd
 
 }
 

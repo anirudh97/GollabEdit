@@ -2,10 +2,12 @@ package utils
 
 import (
 	"bytes"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
 	"net/http"
+	"os"
 	"regexp"
 	"strings"
 	"time"
@@ -149,4 +151,35 @@ func ValidateToken(tokenString string) (*jwt.Token, error) {
 	}
 
 	return token, nil
+}
+
+type ConfigJson struct {
+	Username string `json:"username"`
+	Email    string `json:"email"`
+	Token    string `json:"token"`
+}
+
+func ReadConfigJson() (*ConfigJson, error) {
+
+	filePath := "config.json"
+	// Check if the file exists
+	if _, err := os.Stat(filePath); os.IsNotExist(err) {
+		// File does not exist
+		return nil, fmt.Errorf("file %s does not exist", filePath)
+	}
+
+	// Read the file
+	fileData, err := os.ReadFile(filePath)
+	if err != nil {
+		return nil, fmt.Errorf("error reading file: %v", err)
+	}
+
+	// Unmarshal the JSON data into the ResponseData struct
+	var configData ConfigJson
+	err = json.Unmarshal(fileData, &configData)
+	if err != nil {
+		return nil, fmt.Errorf("error unmarshaling JSON: %v", err)
+	}
+
+	return &configData, nil
 }
