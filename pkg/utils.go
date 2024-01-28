@@ -1,8 +1,11 @@
 package utils
 
 import (
+	"bytes"
 	"errors"
 	"fmt"
+	"io"
+	"net/http"
 	"regexp"
 	"strings"
 	"time"
@@ -18,6 +21,65 @@ var (
 type Claims struct {
 	Email string `json:"email"`
 	jwt.StandardClaims
+}
+
+type HTTPMethod string
+
+const (
+	GET    HTTPMethod = "GET"
+	POST   HTTPMethod = "POST"
+	PUT    HTTPMethod = "PUT"
+	DELETE HTTPMethod = "DELETE"
+	PATCH  HTTPMethod = "PATCH"
+)
+
+type RequestConfig struct {
+	BaseURL string
+	API     string
+	Method  HTTPMethod
+	Payload []byte
+	Bearer  string
+}
+
+type Response struct {
+	Data  []byte `json:"data"`
+	Error string `json:"error"`
+}
+
+func DefaultRequestConfig() RequestConfig {
+	return RequestConfig{
+		BaseURL: "http://localhost:8080",
+	}
+}
+
+func MakeRequest(r RequestConfig) (responseBody []byte, statusCode int, err error) {
+	req, err := http.NewRequest(string(r.Method), r.BaseURL+r.API, bytes.NewBuffer(r.Payload))
+	if err != nil {
+		fmt.Println("Error creating request")
+		return nil, 500, err
+	}
+
+	if len(r.Bearer) > 0 {
+		req.Header.Add("Authorization", "Bearer "+r.Bearer)
+	}
+	req.Header.Set("Content-Type", "application/json")
+
+	client := &http.Client{}
+	resp, err := client.Do(req)
+	if err != nil {
+		fmt.Println("Error in response")
+		return nil, 500, err
+	}
+
+	defer resp.Body.Close()
+	responseBody, err = io.ReadAll(resp.Body)
+	if err != nil {
+		fmt.Println("Error reading response:", err)
+		return
+	}
+
+	return responseBody, resp.StatusCode, nil
+
 }
 
 func ValidateFilename(filename string) bool {

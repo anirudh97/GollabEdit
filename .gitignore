@@ -23,6 +23,6 @@ go.work
 # Project details markdown
 project-spec.md
 
-.gollabedit
+gollabedit
 
 tmp

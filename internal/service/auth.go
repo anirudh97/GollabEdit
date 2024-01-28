@@ -1,6 +1,9 @@
 package service
 
 import (
+	"fmt"
+	"log"
+
 	"github.com/anirudh97/GollabEdit/internal/model"
 	"github.com/anirudh97/GollabEdit/internal/repository"
 	utils "github.com/anirudh97/GollabEdit/pkg"
@@ -8,9 +11,9 @@ import (
 )
 
 type CreateUserRequest struct {
-	Username string `form:"username"`
-	Email    string `form:"email"`
-	Password string `form:"password"`
+	Username string `json:"username"`
+	Email    string `json:"email"`
+	Password string `json:"password"`
 }
 
 type CreateUserResponse struct {
@@ -19,8 +22,8 @@ type CreateUserResponse struct {
 }
 
 type LoginUserRequest struct {
-	Email    string `form:"email"`
-	Password string `form:"password"`
+	Email    string `json:"email"`
+	Password string `json:"password"`
 }
 
 type LoginUserResponse struct {
@@ -29,7 +32,8 @@ type LoginUserResponse struct {
 }
 
 func CreateUser(r *CreateUserRequest) (*CreateUserResponse, error) {
-
+	log.Println("Service | CreateUser :: Invoked")
+	fmt.Println(r)
 	hashedPassword, hashErr := bcrypt.GenerateFromPassword([]byte(r.Password), bcrypt.DefaultCost)
 	if hashErr != nil {
 		return nil, hashErr
@@ -53,6 +57,7 @@ func CreateUser(r *CreateUserRequest) (*CreateUserResponse, error) {
 	// create user
 	createUserErr := repository.CreateUser(user)
 	if createUserErr != nil {
+		fmt.Println("Error Occured: ", createUserErr)
 		return nil, createUserErr
 	}
 

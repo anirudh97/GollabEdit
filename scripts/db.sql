@@ -15,7 +15,7 @@ CREATE TABLE IF NOT EXISTS files(
     fileSize INT NOT NULL,
     createdAt VARCHAR(255) NOT NULL,
     updatedAt VARCHAR(255) NOT NULL,
-    FOREIGN KEY owner REFERENCES users(email) ON DELETE CASCADE
+    FOREIGN KEY (owner) REFERENCES users(email) ON DELETE CASCADE
 );
 
 /* Create shared files table */
