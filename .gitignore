@@ -19,3 +19,11 @@
 
 # Go workspace file
 go.work
+
+# Project details markdown
+project-spec.md
+
+gollabedit
+
+tmp
+config.json
