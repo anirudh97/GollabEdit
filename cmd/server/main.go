@@ -21,6 +21,9 @@ func main() {
 		log.Fatalf("Failed to initialize database: %v", err)
 	}
 
+	if err := database.InitMongo(); err != nil {
+		log.Fatalf("Falied to initialize MongoDB: %v", err)
+	}
 	_, awsInstErr := awsutils.GetInstance()
 	if awsInstErr != nil {
 		log.Fatalf("Failed to initialize aws client: %v", awsInstErr)

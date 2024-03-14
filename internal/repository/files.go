@@ -1,9 +1,49 @@
 package repository
 
 import (
+	"context"
+
 	"github.com/anirudh97/GollabEdit/internal/database"
 	"github.com/anirudh97/GollabEdit/internal/model"
+	"go.mongodb.org/mongo-driver/bson"
+	"go.mongodb.org/mongo-driver/mongo"
+	"go.mongodb.org/mongo-driver/mongo/options"
 )
+
+func UpdateDocument(wd *model.WootDocument) error {
+	collection := database.MongoDB.Database("gollabedit").Collection("documents")
+
+	// Prepare the filter and replacement document
+	filter := bson.M{"id": wd.Id}
+	replacement := wd
+
+	// Prepare the upsert option
+	opts := options.Replace().SetUpsert(true)
+
+	// Perform the replace operation with upsert true
+	_, err := collection.ReplaceOne(context.Background(), filter, replacement, opts)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+func ReterieveDocument(d string) (*model.WootDocument, error) {
+	var result model.WootDocument
+
+	collection := database.MongoDB.Database("gollabedit").Collection("documents")
+
+	err := collection.FindOne(context.Background(), bson.M{"id": d}).Decode(&result)
+	if err != nil {
+		if err == mongo.ErrNoDocuments {
+			return nil, nil
+		} else {
+			return nil, err
+		}
+	}
+
+	return &result, nil
+}
 
 func CheckForFileExistence(f string, l string, o string) (bool, error) {
 	query := "SELECT EXISTS(SELECT 1 FROM files WHERE owner = ? AND filename = ? AND location = ?)"

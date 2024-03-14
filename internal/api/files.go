@@ -12,4 +12,8 @@ func fileRoutes(router *gin.Engine) {
 	// router.DELETE("/file", handler.DeleteFile)
 	// router.POST("/file", handler.GetFile)
 
+	// CRDT-related endpoints
+	router.POST("/file/insert", handler.AuthMiddleware(), handler.InsertCharacter)
+	router.DELETE("/file/delete", handler.AuthMiddleware(), handler.DeleteCharacter)
+
 }

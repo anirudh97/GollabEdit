@@ -206,3 +206,64 @@ func ShareFile(c *gin.Context) {
 	}
 	c.JSON(http.StatusCreated, resp)
 }
+
+func InsertCharacter(c *gin.Context) {
+	log.Println("Handler | InsertCharacter :: Invoked")
+	var req service.InsertCharacterRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		log.Println("Handler | InsertCharacter | Error :: Error: ", err.Error())
+		resp := &utils.Response{
+			Data:  nil,
+			Error: err.Error(),
+		}
+		c.JSON(http.StatusInternalServerError, resp)
+		return
+	}
+	err := service.InsertCharacter(&req)
+	if err != nil {
+		log.Println("Handler | InsertCharacter | Error :: Error: ", err.Error())
+		resp := &utils.Response{
+			Data:  nil,
+			Error: err.Error(),
+		}
+		c.JSON(http.StatusInternalServerError, resp)
+		return
+	}
+
+	resp := &utils.Response{
+		Data:  nil,
+		Error: "",
+	}
+	c.JSON(http.StatusCreated, resp)
+
+}
+
+func DeleteCharacter(c *gin.Context) {
+	log.Println("Handler | DeleteCharacter :: Invoked")
+	var req service.DeleteCharacterRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		log.Println("Handler | DeleteCharacter | Error :: Error: ", err.Error())
+		resp := &utils.Response{
+			Data:  nil,
+			Error: err.Error(),
+		}
+		c.JSON(http.StatusInternalServerError, resp)
+		return
+	}
+	err := service.DeleteCharacter(&req)
+	if err != nil {
+		log.Println("Handler | DeleteCharacter | Error :: Error: ", err.Error())
+		resp := &utils.Response{
+			Data:  nil,
+			Error: err.Error(),
+		}
+		c.JSON(http.StatusInternalServerError, resp)
+		return
+	}
+
+	resp := &utils.Response{
+		Data:  nil,
+		Error: "",
+	}
+	c.JSON(http.StatusCreated, resp)
+}

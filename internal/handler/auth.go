@@ -137,6 +137,7 @@ func Login(c *gin.Context) {
 	}
 
 	// Email validation
+	log.Println(req.Email)
 	if !utils.ValidateEmail(req.Email) {
 		log.Println("Handler | Login | Info :: Email Validation Failed")
 		resp := &utils.Response{
