@@ -2,6 +2,7 @@ package service
 
 import (
 	"fmt"
+	"log"
 	"os"
 	"path"
 	"time"
@@ -40,7 +41,72 @@ type ShareFileResponse struct {
 	Permission      string
 	SharedWithEmail string
 }
+type InsertCharacterRequest struct {
+	DocumentID string `json:"documentId"`
+	UserID     string `json:"userId"`
+	PrevID     string `json:"prevId"`
+	NextID     string `json:"nextId"`
+	Character  string `json:"character"`
+	CharID     string `json:"charId"`
+	Visible    bool   `json:"visible"`
+}
 
+type DeleteCharacterRequest struct {
+	DocumentID string `json:"documentId"`
+	UserID     string `json:"userId"`
+	CharID     string `json:"charId"`
+}
+
+func InsertCharacter(r *InsertCharacterRequest) error {
+
+	wd, err := repository.ReterieveDocument(r.DocumentID)
+	if err != nil {
+		return err
+	}
+
+	if wd == nil {
+		// Make a new woot document
+		log.Println("Document not present, creating new one")
+		wd, err = model.CreateNewDocument(r.DocumentID)
+		if err != nil {
+			return err
+		}
+	}
+
+	wd.InsertCharacter(r.Character, r.CharID, r.PrevID, r.NextID, r.Visible)
+	log.Println("After insert charater!!!")
+	log.Println(wd)
+	err = repository.UpdateDocument(wd)
+	if err != nil {
+		return err
+	}
+
+	// Brodcast through kafka
+
+	return nil
+
+}
+func DeleteCharacter(r *DeleteCharacterRequest) error {
+
+	wd, err := repository.ReterieveDocument(r.DocumentID)
+	if err != nil {
+		return err
+	}
+
+	// Handle case when document not present
+
+	wd.DeleteCharacter(r.CharID)
+
+	err = repository.UpdateDocument(wd)
+	if err != nil {
+		return err
+	}
+
+	// Brodcast through kafka
+
+	return nil
+
+}
 func ShareFile(r *ShareFileRequest) (*ShareFileResponse, error) {
 	status, err := repository.CheckForFileExistence(r.Filename, r.Location, r.SharedByEmail)
 	if err != nil {
