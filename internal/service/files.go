@@ -3,12 +3,8 @@ package service
 import (
 	"fmt"
 	"log"
-	"os"
-	"path"
 	"time"
 
-	"github.com/anirudh97/GollabEdit/internal/awsutils"
-	"github.com/anirudh97/GollabEdit/internal/config"
 	"github.com/anirudh97/GollabEdit/internal/model"
 	"github.com/anirudh97/GollabEdit/internal/repository"
 )
@@ -22,6 +18,13 @@ type CreateFileResponse struct {
 	Filename  string `json:"filename"`
 	Location  string `json:"location"`
 	CreatedAt string
+}
+type OpenFileResponse struct {
+	Filename        string             `json:"filename"`
+	Location        string             `json:"location"`
+	DocumentID      string             `json:"documentId"`
+	DocumentContent model.WootDocument `json:"documentContent"`
+	WebSocketURL    string             `json:"webSocketUrl"`
 }
 type OpenFileRequest struct {
 	Filename string `json:"filename"`
@@ -41,27 +44,39 @@ type ShareFileResponse struct {
 	Permission      string
 	SharedWithEmail string
 }
-type InsertCharacterRequest struct {
-	DocumentID string `json:"documentId"`
-	UserID     string `json:"userId"`
-	PrevID     string `json:"prevId"`
-	NextID     string `json:"nextId"`
-	Character  string `json:"character"`
-	CharID     string `json:"charId"`
-	Visible    bool   `json:"visible"`
+
+type CharacterRequest struct {
+	RequestType string `json:"typeRequest"`
+	DocumentID  string `json:"documentId"`
+	UserID      string `json:"userId"`
+	PrevID      string `json:"prevId"`
+	NextID      string `json:"nextId"`
+	Character   string `json:"character"`
+	CharID      string `json:"charId"`
+	Visible     bool   `json:"visible"`
 }
 
-type DeleteCharacterRequest struct {
-	DocumentID string `json:"documentId"`
-	UserID     string `json:"userId"`
-	CharID     string `json:"charId"`
-}
+// type InsertCharacterRequest struct {
+// 	DocumentID string `json:"documentId"`
+// 	UserID     string `json:"userId"`
+// 	PrevID     string `json:"prevId"`
+// 	NextID     string `json:"nextId"`
+// 	Character  string `json:"character"`
+// 	CharID     string `json:"charId"`
+// 	Visible    bool   `json:"visible"`
+// }
 
-func InsertCharacter(r *InsertCharacterRequest) error {
+// type DeleteCharacterRequest struct {
+// 	DocumentID string `json:"documentId"`
+// 	UserID     string `json:"userId"`
+// 	CharID     string `json:"charId"`
+// }
+
+func InsertCharacter(r *CharacterRequest) (*model.WootDocument, error) {
 
 	wd, err := repository.ReterieveDocument(r.DocumentID)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	if wd == nil {
@@ -69,7 +84,7 @@ func InsertCharacter(r *InsertCharacterRequest) error {
 		log.Println("Document not present, creating new one")
 		wd, err = model.CreateNewDocument(r.DocumentID)
 		if err != nil {
-			return err
+			return nil, err
 		}
 	}
 
@@ -78,19 +93,17 @@ func InsertCharacter(r *InsertCharacterRequest) error {
 	log.Println(wd)
 	err = repository.UpdateDocument(wd)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
-	// Brodcast through kafka
-
-	return nil
+	return wd, nil
 
 }
-func DeleteCharacter(r *DeleteCharacterRequest) error {
+func DeleteCharacter(r *CharacterRequest) (*model.WootDocument, error) {
 
 	wd, err := repository.ReterieveDocument(r.DocumentID)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	// Handle case when document not present
@@ -99,12 +112,10 @@ func DeleteCharacter(r *DeleteCharacterRequest) error {
 
 	err = repository.UpdateDocument(wd)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
-	// Brodcast through kafka
-
-	return nil
+	return wd, nil
 
 }
 func ShareFile(r *ShareFileRequest) (*ShareFileResponse, error) {
@@ -179,7 +190,7 @@ func ShareFile(r *ShareFileRequest) (*ShareFileResponse, error) {
 
 }
 
-func OpenFile(r *OpenFileRequest) (*CreateFileResponse, error) {
+func OpenFile(r *OpenFileRequest) (*OpenFileResponse, error) {
 	status, err := repository.CheckForFileExistence(r.Filename, r.Location, r.Owner)
 	if err != nil {
 		return nil, err
@@ -188,55 +199,84 @@ func OpenFile(r *OpenFileRequest) (*CreateFileResponse, error) {
 		return nil, ErrFileDoesNotExist
 	}
 
-	s3Status, err := repository.CheckIfUploaded(r.Filename, r.Location, r.Owner)
-	if err != nil {
-		return nil, err
+	fileId, fileIdErr := repository.GetFileId(r.Filename, r.Location, r.Owner)
+	if fileIdErr != nil {
+		return nil, fileIdErr
 	}
 
-	s3Client, s3Err := awsutils.NewS3Client()
-	if s3Err != nil {
-		return nil, s3Err
+	wd, documentErr := repository.ReterieveDocument(fileId)
+	if documentErr != nil {
+		return nil, documentErr
 	}
 
-	conf, confErr := config.Load()
-	if confErr != nil {
-		return nil, confErr
-	}
-
-	bucket := conf.AWS.FilesBucket
-	cleanPath := path.Clean("/" + r.Owner + "/" + r.Location + "/" + r.Filename)
-
-	// Upload file to S3
-	if !s3Status {
-		content := []byte("// Empty file.")
-		err := s3Client.Upload(bucket, cleanPath, content)
+	if wd == nil {
+		// Make a new woot document
+		log.Println("Document not present, creating new one")
+		wd, err = model.CreateNewDocument(fileId)
 		if err != nil {
 			return nil, err
 		}
+	}
+	webSocketURL := fmt.Sprintf("ws://gollabedit.com/ws?docId=%s", fileId)
 
-		// Update uploaded status in DB
-		statusErr := repository.UpdateUploadedStatus(r.Filename, r.Location, r.Owner)
-		if statusErr != nil {
-			return nil, err
-		}
+	response := &OpenFileResponse{
+		Filename:        r.Filename,
+		Location:        r.Location,
+		DocumentID:      fileId,
+		DocumentContent: *wd,
+		WebSocketURL:    webSocketURL,
 	}
 
-	// download file from s3
-	sysPath := conf.Server.TmpPath
+	return response, nil
+	// s3Status, err := repository.CheckIfUploaded(r.Filename, r.Location, r.Owner)
+	// if err != nil {
+	// 	return nil, err
+	// }
 
-	fileContent, s3DownloadErr := s3Client.Download(bucket, cleanPath)
-	if s3DownloadErr != nil {
-		return nil, s3DownloadErr
-	}
+	// s3Client, s3Err := awsutils.NewS3Client()
+	// if s3Err != nil {
+	// 	return nil, s3Err
+	// }
 
-	tempFileName := r.Owner + "_" + r.Filename
-	writeErr := os.WriteFile(path.Clean(sysPath+tempFileName), fileContent, 0644)
-	if err != nil {
-		fmt.Println("Error writing to file:", err)
-		return nil, writeErr
-	}
+	// conf, confErr := config.Load()
+	// if confErr != nil {
+	// 	return nil, confErr
+	// }
 
-	return nil, nil
+	// bucket := conf.AWS.FilesBucket
+	// cleanPath := path.Clean("/" + r.Owner + "/" + r.Location + "/" + r.Filename)
+
+	// // Upload file to S3
+	// if !s3Status {
+	// 	content := []byte("// Empty file.")
+	// 	err := s3Client.Upload(bucket, cleanPath, content)
+	// 	if err != nil {
+	// 		return nil, err
+	// 	}
+
+	// 	// Update uploaded status in DB
+	// 	statusErr := repository.UpdateUploadedStatus(r.Filename, r.Location, r.Owner)
+	// 	if statusErr != nil {
+	// 		return nil, err
+	// 	}
+	// }
+
+	// // download file from s3
+	// sysPath := conf.Server.TmpPath
+
+	// fileContent, s3DownloadErr := s3Client.Download(bucket, cleanPath)
+	// if s3DownloadErr != nil {
+	// 	return nil, s3DownloadErr
+	// }
+
+	// tempFileName := r.Owner + "_" + r.Filename
+	// writeErr := os.WriteFile(path.Clean(sysPath+tempFileName), fileContent, 0644)
+	// if err != nil {
+	// 	fmt.Println("Error writing to file:", err)
+	// 	return nil, writeErr
+	// }
+
+	// return nil, nil
 
 }
 

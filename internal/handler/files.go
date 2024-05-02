@@ -9,7 +9,16 @@ import (
 	"github.com/anirudh97/GollabEdit/internal/service"
 	utils "github.com/anirudh97/GollabEdit/pkg"
 	"github.com/gin-gonic/gin"
+	"github.com/gorilla/websocket"
 )
+
+var upgrader = websocket.Upgrader{
+	ReadBufferSize:  1024,
+	WriteBufferSize: 1024,
+	CheckOrigin: func(r *http.Request) bool {
+		return true // or implement your own logic
+	},
+}
 
 func CreateFile(c *gin.Context) {
 	log.Println("Handler | CreateFile :: Invoked")
@@ -207,63 +216,117 @@ func ShareFile(c *gin.Context) {
 	c.JSON(http.StatusCreated, resp)
 }
 
-func InsertCharacter(c *gin.Context) {
-	log.Println("Handler | InsertCharacter :: Invoked")
-	var req service.InsertCharacterRequest
-	if err := c.ShouldBindJSON(&req); err != nil {
-		log.Println("Handler | InsertCharacter | Error :: Error: ", err.Error())
-		resp := &utils.Response{
-			Data:  nil,
-			Error: err.Error(),
-		}
-		c.JSON(http.StatusInternalServerError, resp)
-		return
-	}
-	err := service.InsertCharacter(&req)
-	if err != nil {
-		log.Println("Handler | InsertCharacter | Error :: Error: ", err.Error())
-		resp := &utils.Response{
-			Data:  nil,
-			Error: err.Error(),
-		}
-		c.JSON(http.StatusInternalServerError, resp)
-		return
-	}
+func handleConnection(conn *websocket.Conn) {
+	defer conn.Close()
 
-	resp := &utils.Response{
-		Data:  nil,
-		Error: "",
-	}
-	c.JSON(http.StatusCreated, resp)
+	// Receiving messages
+	for {
+		_, message, err := conn.ReadMessage()
+		if err != nil {
+			log.Println("read:", err)
+			break
+		}
 
+		var req service.CharacterRequest
+		err = json.Unmarshal(message, &req)
+		if err != nil {
+			log.Println("error unmarshalling message:", err)
+			continue
+		}
+
+		switch req.RequestType {
+		case "insert":
+			wd, err := service.InsertCharacter(&req)
+			if err != nil {
+				log.Println("error inserting character:", err)
+			} else {
+				// Send the updated document back to the client
+				conn.WriteJSON(wd)
+			}
+		case "delete":
+			wd, err := service.DeleteCharacter(&req)
+			if err != nil {
+				log.Println("error deleting character:", err)
+			} else {
+				// Send the updated document back to the client
+				conn.WriteJSON(wd)
+			}
+		default:
+			log.Println("unknown request type:", req.RequestType)
+			conn.WriteJSON("unknown request type")
+		}
+	}
 }
 
-func DeleteCharacter(c *gin.Context) {
-	log.Println("Handler | DeleteCharacter :: Invoked")
-	var req service.DeleteCharacterRequest
-	if err := c.ShouldBindJSON(&req); err != nil {
-		log.Println("Handler | DeleteCharacter | Error :: Error: ", err.Error())
-		resp := &utils.Response{
-			Data:  nil,
-			Error: err.Error(),
-		}
-		c.JSON(http.StatusInternalServerError, resp)
-		return
-	}
-	err := service.DeleteCharacter(&req)
+func WebsocketHandler(c *gin.Context) {
+	log.Println("Handler | websocketHandler :: Invoked")
+	conn, err := upgrader.Upgrade(c.Writer, c.Request, nil)
 	if err != nil {
-		log.Println("Handler | DeleteCharacter | Error :: Error: ", err.Error())
-		resp := &utils.Response{
-			Data:  nil,
-			Error: err.Error(),
-		}
-		c.JSON(http.StatusInternalServerError, resp)
+		http.Error(c.Writer, "Could not open websocket connection", http.StatusBadRequest)
 		return
 	}
+	defer conn.Close()
 
-	resp := &utils.Response{
-		Data:  nil,
-		Error: "",
-	}
-	c.JSON(http.StatusCreated, resp)
+	handleConnection(conn)
 }
+
+// func InsertCharacter(c *gin.Context) {
+// 	log.Println("Handler | InsertCharacter :: Invoked")
+// 	var req service.InsertCharacterRequest
+// 	if err := c.ShouldBindJSON(&req); err != nil {
+// 		log.Println("Handler | InsertCharacter | Error :: Error: ", err.Error())
+// 		resp := &utils.Response{
+// 			Data:  nil,
+// 			Error: err.Error(),
+// 		}
+// 		c.JSON(http.StatusInternalServerError, resp)
+// 		return
+// 	}
+// 	err := service.InsertCharacter(&req)
+// 	if err != nil {
+// 		log.Println("Handler | InsertCharacter | Error :: Error: ", err.Error())
+// 		resp := &utils.Response{
+// 			Data:  nil,
+// 			Error: err.Error(),
+// 		}
+// 		c.JSON(http.StatusInternalServerError, resp)
+// 		return
+// 	}
+
+// 	resp := &utils.Response{
+// 		Data:  nil,
+// 		Error: "",
+// 	}
+// 	c.JSON(http.StatusCreated, resp)
+
+// }
+
+// func DeleteCharacter(c *gin.Context) {
+// 	log.Println("Handler | DeleteCharacter :: Invoked")
+// 	var req service.DeleteCharacterRequest
+// 	if err := c.ShouldBindJSON(&req); err != nil {
+// 		log.Println("Handler | DeleteCharacter | Error :: Error: ", err.Error())
+// 		resp := &utils.Response{
+// 			Data:  nil,
+// 			Error: err.Error(),
+// 		}
+// 		c.JSON(http.StatusInternalServerError, resp)
+// 		return
+// 	}
+// 	err := service.DeleteCharacter(&req)
+// 	if err != nil {
+// 		log.Println("Handler | DeleteCharacter | Error :: Error: ", err.Error())
+// 		resp := &utils.Response{
+// 			Data:  nil,
+// 			Error: err.Error(),
+// 		}
+// 		c.JSON(http.StatusInternalServerError, resp)
+// 		return
+// 	}
+
+// 	resp := &utils.Response{
+// 		Data:  nil,
+// 		Error: "",
+// 	}
+// 	c.JSON(http.StatusCreated, resp)
+// }
